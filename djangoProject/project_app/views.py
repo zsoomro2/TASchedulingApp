@@ -1,22 +1,31 @@
 from django.shortcuts import render, redirect
 from django.contrib.auth import authenticate, login, logout
 from django.contrib import messages
+from django.views import View
+from .models import MyUser
 
 # Create your views here.
-def home(request) :
-    if request.method == 'POST' :
-        username = request.POST['username']
-        password = request.POST['password']
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            messages.success(request, "You are now logged in")
-            return redirect('login')
+class Login(View) :
+    def get(self, request):
+        return render(request, "login.html", {})
+    def post(self, request):
+        noSuchUser = False
+        badPassword = False
+        try:
+            m = MyUser.objects.get(name=request.POST['username'])
+            badPassword = (m.password != request.POST['password'])
+        except:
+            noSuchUser = True
+        if noSuchUser:
+            m = MyUser(name=request.POST['name'], password=request.POST['password'])
+            m.save()
+            request.session['username'] = m.username
+            return redirect('/home/')
+        elif badPassword:
+            return render(request, "login.html", {"msg": "Bad password"})
         else:
-            messages.success(request, "There was an error logging in, please try again")
-            return redirect('login')
-    else:
-        return render(request, 'login.html', {})
+            request.session['username'] = m.username
+            return redirect('/home/')
 
 
 def logout_user(request):
